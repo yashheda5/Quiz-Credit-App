@@ -8,3 +8,4 @@ allowBuilds:
   '@swc/core': false
   esbuild: false
   prisma: false
+  puppeteer: false
