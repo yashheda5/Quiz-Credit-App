@@ -1,0 +1,862 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Quiz Credit Platform API",
+    "version": "1.0.0",
+    "description": "API documentation for authentication, quiz management, quiz attempts, wallets, and credit purchases."
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "Current server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "paths": {
+    "/api/v1/health": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "Check API health",
+        "responses": {
+          "200": {
+            "description": "API is running"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/test": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Verify admin access",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Admin access granted"
+          },
+          "403": {
+            "description": "Admin access required"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/register": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Register a new user",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "email",
+                  "password"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "password": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User registered"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "409": {
+            "description": "Email already exists"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Login and receive JWT",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email",
+                  "password"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "password": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful"
+          },
+          "401": {
+            "description": "Invalid credentials"
+          }
+        }
+      }
+    },
+    "/api/v1/me": {
+      "get": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Get authenticated user",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authenticated user details"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/quizzes": {
+      "get": {
+        "tags": [
+          "Quizzes"
+        ],
+        "summary": "List published quizzes",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Published quizzes"
+          }
+        }
+      }
+    },
+    "/api/v1/quizzes/{quizId}": {
+      "get": {
+        "tags": [
+          "Quizzes"
+        ],
+        "summary": "Get published quiz details",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "quizId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Quiz questions and options"
+          },
+          "404": {
+            "description": "Quiz not found"
+          }
+        }
+      }
+    },
+    "/api/v1/quizzes/{quizId}/start": {
+      "post": {
+        "tags": [
+          "Attempts"
+        ],
+        "summary": "Start a quiz and deduct stake",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "quizId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "idempotencyKey"
+                ],
+                "properties": {
+                  "idempotencyKey": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "Reuse the same UUID when retrying the same start request"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Quiz attempt started"
+          },
+          "400": {
+            "description": "Insufficient credits or invalid input"
+          },
+          "409": {
+            "description": "Idempotency key conflict"
+          }
+        }
+      }
+    },
+    "/api/v1/attempts/{attemptId}/submit": {
+      "post": {
+        "tags": [
+          "Attempts"
+        ],
+        "summary": "Submit quiz answers and calculate score",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "attemptId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "answers"
+                ],
+                "properties": {
+                  "answers": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "questionId",
+                        "optionId"
+                      ],
+                      "properties": {
+                        "questionId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "optionId": {
+                          "type": "string",
+                          "format": "uuid"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Quiz submitted and scored"
+          },
+          "400": {
+            "description": "Invalid answers"
+          },
+          "409": {
+            "description": "Attempt expired or already submitted"
+          }
+        }
+      }
+    },
+    "/api/v1/attempts": {
+      "get": {
+        "tags": [
+          "Attempts"
+        ],
+        "summary": "List current user's quiz attempts",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Attempt history"
+          }
+        }
+      }
+    },
+    "/api/v1/attempts/{attemptId}": {
+      "get": {
+        "tags": [
+          "Attempts"
+        ],
+        "summary": "Get attempt details",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "attemptId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Attempt details and answers"
+          },
+          "404": {
+            "description": "Attempt not found"
+          }
+        }
+      }
+    },
+    "/api/v1/wallet": {
+      "get": {
+        "tags": [
+          "Wallet"
+        ],
+        "summary": "Get current user's wallet balance",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Wallet balance"
+          }
+        }
+      }
+    },
+    "/api/v1/wallet/transactions": {
+      "get": {
+        "tags": [
+          "Wallet"
+        ],
+        "summary": "Get wallet transaction history",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Credit transactions"
+          }
+        }
+      }
+    },
+    "/api/v1/wallet/purchase": {
+      "post": {
+        "tags": [
+          "Wallet"
+        ],
+        "summary": "Purchase credits (mock payment)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "purchaseId",
+                  "credits"
+                ],
+                "properties": {
+                  "purchaseId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "Unique purchase ID for idempotency"
+                  },
+                  "credits": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "example": 200
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Credits purchased"
+          },
+          "400": {
+            "description": "Invalid purchase request"
+          },
+          "409": {
+            "description": "Purchase ID conflict"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/quizzes": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "List all quizzes including drafts",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "All quizzes"
+          },
+          "403": {
+            "description": "Admin access required"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Create a draft quiz",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "title",
+                  "stake",
+                  "reward",
+                  "passingScore"
+                ],
+                "properties": {
+                  "title": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "stake": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "reward": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "passingScore": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Draft quiz created"
+          },
+          "403": {
+            "description": "Admin access required"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/quizzes/{quizId}": {
+      "patch": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Update a draft quiz",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "quizId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "stake": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "reward": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "passingScore": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Quiz updated"
+          },
+          "409": {
+            "description": "Quiz cannot be edited"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/quizzes/{quizId}/publish": {
+      "patch": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Publish a draft quiz",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "quizId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Quiz published"
+          },
+          "400": {
+            "description": "Quiz validation failed"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/quizzes/{quizId}/archive": {
+      "patch": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Archive a quiz",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "quizId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Quiz archived"
+          },
+          "409": {
+            "description": "Quiz already archived"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/quizzes/{quizId}/questions": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Add a question to a draft quiz",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "quizId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "text",
+                  "options"
+                ],
+                "properties": {
+                  "text": {
+                    "type": "string"
+                  },
+                  "points": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "options": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "text": {
+                          "type": "string"
+                        },
+                        "isCorrect": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Question created"
+          },
+          "409": {
+            "description": "Quiz cannot be edited"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/quizzes/{quizId}/questions/{questionId}": {
+      "patch": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Update a question",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "quizId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "questionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "type": "string"
+                  },
+                  "points": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "options": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "text": {
+                          "type": "string"
+                        },
+                        "isCorrect": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Question updated"
+          },
+          "409": {
+            "description": "Question cannot be edited"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Delete a question",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "quizId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "questionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Question deleted"
+          },
+          "409": {
+            "description": "Question cannot be deleted"
+          }
+        }
+      }
+    }
+  }
+}
