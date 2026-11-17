@@ -1,4 +1,3 @@
-
 import type { OpenAPIV3 } from "openapi-types";
 
 import { authPaths } from "./auth.docs.js";
@@ -18,8 +17,8 @@ export const swaggerDocument: OpenAPIV3.Document = {
 
   servers: [
     {
-      url: "http://localhost:5001",
-      description: "Local development",
+      url: "/",
+      description: "Current server",
     },
   ],
 
