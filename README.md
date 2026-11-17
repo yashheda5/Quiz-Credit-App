@@ -102,9 +102,11 @@ erDiagram
     QuestionOption ||--o{ AttemptAnswer : selected_in
 ```
 
-<!-- Optional: replace this comment with a Prisma-generated diagram image after saving it at docs/database-erd.png:
-![Prisma database ER diagram](docs/database-erd.png)
--->
+### Prisma-generated Database ER Diagram
+
+The following diagram is automatically generated from the Prisma schema.
+
+![Prisma Database ER Diagram](./apps/backend/docs/ERD.svg)
 
 ### Data integrity and credit tracking
 
@@ -121,18 +123,27 @@ erDiagram
 
 ```mermaid
 sequenceDiagram
-    actor User
-    participant UI as React frontend
-    participant API as Express API
+    participant UI as React Frontend
+    participant API as Express Backend
     participant DB as PostgreSQL
-    User->>UI: Start published quiz
-    UI->>API: POST /api/v1/quizzes/:quizId/start
-    API->>DB: Record attempt and stake transaction
-    API-->>UI: Attempt details
-    User->>UI: Submit answers
-    UI->>API: POST /api/v1/attempts/:attemptId/submit
-    API->>DB: Save answers and result; apply reward if eligible
-    API-->>UI: Score and result
+
+    UI->>API: Start quiz attempt
+    API->>DB: Validate wallet and deduct stake
+    DB-->>API: Attempt created
+    API-->>UI: Return attempt details
+
+    UI->>API: Submit quiz answers
+    API->>DB: Validate answers and calculate score
+    DB-->>API: Score calculated
+
+    alt Quiz passed
+        API->>DB: Credit reward to wallet
+        DB-->>API: Reward transaction recorded
+    else Quiz failed
+        API->>DB: Record failed attempt
+    end
+
+    API-->>UI: Return score and attempt result
 ```
 
 ### Credit activity
